@@ -1,67 +1,73 @@
-var React = require("react");
+/* global JSXTransformer */
 
-var selfCleaningTimeout = {
-  componentDidUpdate: function() {
-    clearTimeout(this.timeoutID);
-  },
+const React = require("react");
+const ReactDOM = require("react-dom");
 
-  setTimeout: function() {
-    clearTimeout(this.timeoutID);
-    this.timeoutID = setTimeout.apply(null, arguments);
-  }
+const selfCleaningTimeout = {
+    componentDidUpdate: function() {
+        clearTimeout(this.timeoutID);
+    },
+
+    setTimeout: function() {
+        clearTimeout(this.timeoutID);
+        this.timeoutID = setTimeout(...arguments);
+    },
 };
 
-var ComponentPreview = React.createClass({
+const ComponentPreview = React.createClass({
     propTypes: {
-      code: React.PropTypes.string.isRequired
+        code: React.PropTypes.string.isRequired,
     },
 
     mixins: [selfCleaningTimeout],
 
-    render: function() {
-        return <div ref="mount" />;
-    },
-
     componentDidMount: function() {
-      this.executeCode();
+        this.executeCode();
     },
 
     componentDidUpdate: function(prevProps) {
-      // execute code only when the state's not being updated by switching tab
-      // this avoids re-displaying the error, which comes after a certain delay
-      if (this.props.code !== prevProps.code) {
-        this.executeCode();
-      }
+        // execute code only when the state's not being updated by switching tab
+        // this avoids re-displaying the error, which comes after a certain
+        // delay
+        if (this.props.code !== prevProps.code) {
+            this.executeCode();
+        }
     },
 
     compileCode: function() {
-      return JSXTransformer.transform(
-          '(function() {' +
-              this.props.code +
-          '\n})();',
-      { harmony: true }
-      ).code;
+        return JSXTransformer.transform(
+            '(function() {' +
+                this.props.code +
+            '\n})();',
+            {harmony: true}
+        ).code;
     },
 
     executeCode: function() {
-      var mountNode = this.refs.mount.getDOMNode();
+        const mountNode = this.refs.mount;
 
-      try {
-        React.unmountComponentAtNode(mountNode);
-      } catch (e) { }
+        try {
+            React.unmountComponentAtNode(mountNode);
+        } catch (e) {
+            // Ignore errors
+        }
 
-      try {
-        var compiledCode = this.compileCode();
-        React.render(eval(compiledCode), mountNode);
-      } catch (err) {
-        this.setTimeout(function() {
-          React.render(
-            <div className="playgroundError">{err.toString()}</div>,
-            mountNode
-          );
-        }, 500);
-      }
-    }
+        try {
+            const compiledCode = this.compileCode();
+            ReactDOM.render(eval(compiledCode), mountNode);
+        } catch (err) {
+            this.setTimeout(function() {
+                ReactDOM.render(
+                    <div className="playgroundError">{err.toString()}</div>,
+                    mountNode
+                );
+            }, 500);
+        }
+    },
+
+    render: function() {
+        return <div ref="mount" />;
+    },
 });
 
 module.exports = ComponentPreview;
